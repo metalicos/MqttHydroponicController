@@ -38,38 +38,81 @@ void readAllDataFromMemoryToRAM() {
   memory.getString("wifiPASS", cdd.wifiPASS, 20);
 }
 
+struct PHCalibrationValue getPhStruct() {
+  struct PHCalibrationValue calValue = phSensor.getCalibrationValue();
+  calValue.point = memory.getChar("point", '1');
+  calValue.value[0] = memory.getDouble("value[0]", 4.0);
+  calValue.value[1] = memory.getDouble("value[1]", 7.0);
+  calValue.adc[0] = memory.getLong("adc[0]", 1500);
+  calValue.adc[1] = memory.getLong("adc[1]", 2000);
+  calValue.slope = memory.getDouble("slope", 0.01);
+  calValue.adcOffset = memory.getLong("adcOffset", 700);
+  return calValue;
+}
+
+void savePhStruct() {
+  struct PHCalibrationValue calValue = phSensor.getCalibrationValue();
+  memory.putChar("point", calValue.point);
+  memory.putDouble("value[0]", calValue.value[0]);
+  memory.putDouble("value[1]", calValue.value[1]);
+  memory.putLong("adc[0]", calValue.adc[0]);
+  memory.putLong("adc[1]", calValue.adc[1]);
+  memory.putDouble("slope", calValue.slope);
+  memory.putLong("adcOffset", calValue.adcOffset);
+}
+
 void setupMemory() {
   memory.begin("app-data", false);
   if (memory.getUChar("isFirst", 12) == 233) {
     memory.putUChar("isFirst", 233);
+    memory.putDouble("tdskValue", 1.0);
+    savePhStruct();
     saveAllDataToMemory();
   }
+  tdsSensor.setKvalue(memory.getDouble("tdskValue", 1.0));
+  phSensor.initialize(getPhStruct());
+
   readAllDataFromMemoryToRAM();
+
   cdd.restartCounter++;
-  memory.putUShort("rstCounter", cdd.restartCounter);
+  memory.putULong("reCou", cdd.restartCounter);
 }
 
 void subscribeEndpoints() {
-  mqttClient.subscribe("cyberdone/"UID"/dateSecond");
-  mqttClient.subscribe("cyberdone/"UID"/dateMinute");
-  mqttClient.subscribe("cyberdone/"UID"/dateHour");
-  mqttClient.subscribe("cyberdone/"UID"/dateDay");
-  mqttClient.subscribe("cyberdone/"UID"/dateMonth");
-  mqttClient.subscribe("cyberdone/"UID"/dateYear");
-  mqttClient.subscribe("cyberdone/"UID"/phValue");
-  mqttClient.subscribe("cyberdone/"UID"/temperatureValue");
-  mqttClient.subscribe("cyberdone/"UID"/ecValue");
-  mqttClient.subscribe("cyberdone/"UID"/tdsValue");
-  mqttClient.subscribe("cyberdone/"UID"/sendDataToServerEvery");
-  mqttClient.subscribe("cyberdone/"UID"/checkSensorEvery");
-  mqttClient.subscribe("cyberdone/"UID"/turnOff");
-  mqttClient.subscribe("cyberdone/"UID"/restartCounter");
-  mqttClient.subscribe("cyberdone/"UID"/wifiSSID");
-  mqttClient.subscribe("cyberdone/"UID"/wifiPASS");
+  mqttClient.subscribe("cyberdone/"UUID"/dateSecond");
+  mqttClient.subscribe("cyberdone/"UUID"/dateMinute");
+  mqttClient.subscribe("cyberdone/"UUID"/dateHour");
+  mqttClient.subscribe("cyberdone/"UUID"/dateDay");
+  mqttClient.subscribe("cyberdone/"UUID"/dateMonth");
+  mqttClient.subscribe("cyberdone/"UUID"/dateYear");
+
+  mqttClient.subscribe("cyberdone/"UUID"/phValue");
+  mqttClient.subscribe("cyberdone/"UUID"/temperatureValue");
+  mqttClient.subscribe("cyberdone/"UUID"/ecValue");
+  mqttClient.subscribe("cyberdone/"UUID"/tdsValue");
+
+  mqttClient.subscribe("cyberdone/"UUID"/sendDataToServerEvery");
+  mqttClient.subscribe("cyberdone/"UUID"/checkSensorEvery");
+  mqttClient.subscribe("cyberdone/"UUID"/turnOff");
+  mqttClient.subscribe("cyberdone/"UUID"/restartCounter");
+
+  mqttClient.subscribe("cyberdone/"UUID"/calibratePhLow");
+  mqttClient.subscribe("cyberdone/"UUID"/calibratePhHigh");
+  mqttClient.subscribe("cyberdone/"UUID"/calibratePhClear");
+
+  mqttClient.subscribe("cyberdone/"UUID"/calibrateTds");
+  mqttClient.subscribe("cyberdone/"UUID"/calibrateTdsClear");
+
+  mqttClient.subscribe("cyberdone/"UUID"/readAll");
+  mqttClient.subscribe("cyberdone/"UUID"/saveAll");
+  mqttClient.subscribe("cyberdone/"UUID"/restart");
+
+  mqttClient.subscribe("cyberdone/"UUID"/wifiSSID");
+  mqttClient.subscribe("cyberdone/"UUID"/wifiPASS");
 }
 
 String createJSON() {
-  return "{\"dateSecond\":\"" + String(cdd.dateSecond) + "\",\"dateMinute\":\"" + String(cdd.dateMinute) + "\",\"dateHour\":\"" + String(cdd.dateHour) + "\",\"dateDay\":\"" + String(cdd.dateDay) + "\",\"dateMonth\":\"" + String(cdd.dateMonth) + "\",\"dateYear\":\"" + String(cdd.dateYear) + "\",\"phValue\":\"" + String(cdd.phValue) + "\",\"temperatureValue\":\"" + String(cdd.temperatureValue) + "\",\"ecValue\":\"" + String(cdd.ecValue) + "\",\"tdsValue\":\"" + String(cdd.tdsValue) + "\",\"sendDataToServerEvery\":\"" + String(cdd.sendDataToServerEvery) + "\",\"checkSensorEvery\":\"" + String(cdd.checkSensorEvery) + "\",\"turnOff\":\"" + String(cdd.turnOff) + "\",\"restartCounter\":\"" + String(cdd.restartCounter) + "\"}";
+  return "{\"dateSecond\":\"" + String(cdd.dateSecond) + "\",\"dateMinute\":\"" + String(cdd.dateMinute) + "\",\"dateHour\":\"" + String(cdd.dateHour) + "\",\"dateDay\":\"" + String(cdd.dateDay) + "\",\"dateMonth\":\"" + String(cdd.dateMonth) + "\",\"dateYear\":\"" + String(cdd.dateYear) + "\",\"phValue\":\"" + String(cdd.phValue) + "\",\"temperatureValue\":\"" + String(cdd.temperatureValue) + "\",\"ecValue\":\"" + String(cdd.ecValue) + "\",\"tdsValue\":\"" + String(cdd.tdsValue) + "\",\"sendDataToServerEvery\":\"" + String((uint32_t)cdd.sendDataToServerEvery) + "\",\"checkSensorEvery\":\"" + String((uint32_t)cdd.checkSensorEvery) + "\",\"turnOff\":\"" + String(cdd.turnOff) + "\",\"restartCounter\":\"" + String((uint32_t)cdd.restartCounter) + "\"}";
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -94,73 +137,140 @@ void callback(char* topic, byte* payload, unsigned int length) {
   sscanf(data, "#%Lf#", &doubleValue);
 
 
-  if (strcmp(topic, "cyberdone/"UID"/dateSecond") == 0) {
-    cdd.dateSecond = (uint8_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dateSecond") == 0) {
+    cdd.dateSecond = (uint8_t) int32_t_Value;
+    memory.putUChar("daSec", cdd.dateSecond);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/dateMinute") == 0) {
-    cdd.dateMinute = (uint8_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dateMinute") == 0) {
+    cdd.dateMinute = (uint8_t) int32_t_Value;
+    memory.putUChar("daMin", cdd.dateMinute);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/dateHour") == 0) {
-    cdd.dateHour = (uint8_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dateHour") == 0) {
+    cdd.dateHour = (uint8_t) int32_t_Value;
+    memory.putUChar("daHou", cdd.dateHour);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/dateDay") == 0) {
-    cdd.dateDay = (uint8_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dateDay") == 0) {
+    cdd.dateDay = (uint8_t) int32_t_Value;
+    memory.putUChar("daDay", cdd.dateDay);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/dateMonth") == 0) {
-    cdd.dateMonth = (uint8_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dateMonth") == 0) {
+    cdd.dateMonth = (uint8_t) int32_t_Value;
+    memory.putUChar("daMon", cdd.dateMonth);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/dateYear") == 0) {
-    cdd.dateYear = (uint16_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dateYear") == 0) {
+    cdd.dateYear = (uint16_t) int32_t_Value;
+    memory.putUShort("daYea", cdd.dateYear);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/phValue") == 0) {
-    cdd.phValue = (float) floatValue; return;
+  if (strcmp(topic, "cyberdone/"UUID"/phValue") == 0) {
+    cdd.phValue = (float) floatValue;
+    memory.putFloat("phVal", cdd.phValue);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/temperatureValue") == 0) {
-    cdd.temperatureValue = (float) floatValue; return;
+  if (strcmp(topic, "cyberdone/"UUID"/temperatureValue") == 0) {
+    cdd.temperatureValue = (float) floatValue;
+    memory.putFloat("teVal", cdd.temperatureValue);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/ecValue") == 0) {
-    cdd.ecValue = (float) floatValue; return;
+  if (strcmp(topic, "cyberdone/"UUID"/ecValue") == 0) {
+    cdd.ecValue = (float) floatValue;
+    memory.putFloat("ecVal", cdd.ecValue);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/tdsValue") == 0) {
-    cdd.tdsValue = (float) floatValue; return;
+  if (strcmp(topic, "cyberdone/"UUID"/tdsValue") == 0) {
+    cdd.tdsValue = (float) floatValue;
+    memory.putFloat("tdVal", cdd.tdsValue);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/sendDataToServerEvery") == 0) {
-    cdd.sendDataToServerEvery = (uint32_t) uint32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/sendDataToServerEvery") == 0) {
+    cdd.sendDataToServerEvery = uint32_t_Value;
+    memory.putUInt("seDatToSer", cdd.sendDataToServerEvery);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/checkSensorEvery") == 0) {
-    cdd.checkSensorEvery = (uint16_t) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/checkSensorEvery") == 0) {
+    cdd.checkSensorEvery = int32_t_Value;
+    memory.putUShort("chSenEve", cdd.checkSensorEvery);
+    return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/turnOff") == 0) {
+  if (strcmp(topic, "cyberdone/"UUID"/turnOff") == 0) {
     cdd.turnOff = (bool) int32_t_Value; return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/restartCounter") == 0) {
+  if (strcmp(topic, "cyberdone/"UUID"/restartCounter") == 0) {
     cdd.restartCounter = (uint16_t) int32_t_Value; return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/wifiSSID") == 0) {
+  if (strcmp(topic, "cyberdone/"UUID"/wifiSSID") == 0) {
     sscanf(data, " %s ", cdd.wifiSSID);
+    memory.putString("wiSSID", String(cdd.wifiSSID));
     return;
   }
 
-  if (strcmp(topic, "cyberdone/"UID"/wifiPASS") == 0) {
+  if (strcmp(topic, "cyberdone/"UUID"/wifiPASS") == 0) {
     sscanf(data, " %s ", cdd.wifiPASS);
+    memory.putString("wiPASS", String(cdd.wifiPASS));
     return;
   }
 
+  if (strcmp(topic, "cyberdone/"UUID"/calibratePhLow") == 0) {
+    phSensor.calibrationLow(doubleValue);
+    savePhStruct();
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/calibratePhHigh") == 0) {
+    phSensor.calibrationHigh(doubleValue);
+    savePhStruct();
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/calibratePhClear") == 0) {
+    phSensor.calibrationClear();
+    savePhStruct();
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/calibrateTds") == 0) {
+    memory.putDouble("tdskValue", tdsSensor.tdsCalibration(doubleValue));
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/calibrateTdsClear") == 0) {
+    memory.putDouble("tdskValue", tdsSensor.tdsClearCalibration());
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/restart") == 0) {
+    ESP.restart();
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/saveAll") == 0) {
+    saveAllDataToMemory();
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/readAll") == 0) {
+    readAllDataFromMemoryToRAM();
+  }
 }
+
 
 void setup_wifi() {
   delay(10);
@@ -171,13 +281,12 @@ void setup_wifi() {
 
 void reconnect() {
   if (!mqttClient.connected()) {
-    if (mqttClient.connect(UID))
-      subscribeEndpoints();
+    if (mqttClient.connect(UUID)) subscribeEndpoints();
   }
 }
 
 void setCurrentDateTime() {
-  DateTime now = rtc.now();
+  now = rtc.now();
   cdd.dateSecond = now.second();
   cdd.dateMinute = now.minute();
   cdd.dateHour = now.hour();
@@ -191,7 +300,7 @@ void mqttLoop() {
     reconnect();
   }
   mqttClient.loop();
-  if (millis() - lastSendToServer > (unsigned long)cdd.sendDataToServerEvery) {
+  if (millis() - lastSendToServer > (uint64_t) cdd.sendDataToServerEvery) {
     lastSendToServer = millis();
     mqttClient.publish("hydro-chip", createJSON().c_str());
     setCurrentDateTime();
@@ -202,25 +311,24 @@ void setupClock() {
   rtc.begin(DateTime(cdd.dateYear, cdd.dateMonth, cdd.dateDay, cdd.dateHour, cdd.dateMinute, cdd.dateSecond));
 }
 
-void singleClick(Button2& btn) {
-}
-
-void pressed(Button2& btn) {
-}
-
-void released(Button2& btn) {
-}
-
-void longSingleClick(Button2& btn) {
-}
-
-void doubleClick(Button2& btn) {
-}
-
-void tripleClick(Button2& btn) {
-}
-
 void setupDosators() {
+}
+
+void setupSensors() {
+  temperatureSensor.setResolution(12);
+  tdsSensor.begin();
+}
+
+void sensorsLoop() {
+  tdsSensor.setTemperature(cdd.temperatureValue);
+  tdsSensor.update();
+
+  cdd.temperatureValue = temperatureSensor.getTempC();
+  cdd.tdsValue = tdsSensor.getTdsValue();
+  cdd.ecValue = tdsSensor.getEcValue();
+
+  cdd.phValue = phSensor.singleReading().getpH();
+  phSensor.temperatureCompensation(cdd.temperatureValue);
 }
 
 void regulatorLoop() {

@@ -3,19 +3,29 @@
 #include "RTClib.h"
 #include "data.h"
 #include <Preferences.h>
-#include "Button2.h";
+#include "DS18B20.h"
+#include "CyberDonePhSensor.h"
+#include "CyberDoneTdsSensor.h"
 
 //#define MQTT_SERVER "b85b0aa3fd23.sn.mynetname.net"
-#define MQTT_SERVER "192.168.1.200"                       
+#define MQTT_SERVER "192.168.1.100"                       
 #define ADC_MAX 4095
+#define ADC_REFERENCE_VOLTAGE 3.3
+#define PH_SENSOR_PORT 34
+#define TDS_SENSOR_PORT 35
+#define TEMPERATURE_SENSOR_PORT 32
 
-unsigned long lastSendToServer = 0;
-unsigned long lastTransmit = 0;
-unsigned long lastReceive = 0;
+uint64_t lastSendToServer = 0;
 
 WiFiClient espClient;                                                     
 PubSubClient mqttClient(espClient);                                         
-CyberDoneData cdd;
+DeviceData cdd;
 RTC_Millis rtc;
+DateTime now;
 Preferences memory;
-Button2 button = Button2(5);
+
+DS18B20 temperatureSensor(TEMPERATURE_SENSOR_PORT);
+CyberDonePhSensor phSensor(PH_SENSOR_PORT);
+CyberDoneTdsSensor tdsSensor(TDS_SENSOR_PORT, ADC_REFERENCE_VOLTAGE, ADC_MAX);
+    
+    
