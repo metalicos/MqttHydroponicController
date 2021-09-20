@@ -9,15 +9,33 @@ struct DeviceData {
   uint8_t dateMonth = 0;
   uint16_t dateYear = 0;
 
-  double phValue = 0;
+  double phValue = 5.5;
   double temperatureValue = 23.0;
   double ecValue = 0;
-  uint32_t tdsValue = 0; //ppm
+  uint32_t tdsValue = 600; //ppm
 
+  double phUpPumpRegulatorKp = 1.0;
+  double phUpPumpRegulatorKi = 5.0;
+  double phUpPumpRegulatorKd = 0.0;
+  uint32_t phUpPumpRegulatorDt = 500;
+
+  double phDownPumpRegulatorKp = 1.0;
+  double phDownPumpRegulatorKi = 5.0;
+  double phDownPumpRegulatorKd = 0.0;
+  uint32_t phDownPumpRegulatorDt = 500;
+
+  double fertilizerPumpRegulatorKp = 1.0;
+  double fertilizerPumpRegulatorKi = 5.0;
+  double fertilizerPumpRegulatorKd = 5.0;
+  uint32_t fertilizerPumpRegulatorDt = 500;
+
+  double mlPerSecond = 1.5;
+  
   uint32_t phUpDoseML = 5;
   uint32_t phDownDoseML = 5;
   uint32_t fertilizerDoseML = 5;
-  uint32_t recheckDoseCompensationAfterMS = 120000;
+  
+  uint64_t recheckDoseCompensationAfterMS = 120000;
 
   double setupPhValue = 6.2;
   uint32_t setupTdsValue = 600; //ppm

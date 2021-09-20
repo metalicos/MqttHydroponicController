@@ -1,5 +1,15 @@
 #include "global.h"
 
+void startDosing(int pinA, int pinB, bool direction) {
+  digitalWrite(pinA, direction == true ? 1 : 0);
+  digitalWrite(pinB, direction == true ? 0 : 1);
+}
+
+void stopDosing(int pinA, int pinB) {
+  digitalWrite(pinA, 0);
+  digitalWrite(pinB, 0);
+}
+
 void saveAllDataToMemory() {
   memory.putUChar("daSec", cdd.dateSecond);
   memory.putUChar("daMin", cdd.dateMinute);
@@ -90,6 +100,13 @@ void subscribeEndpoints() {
   mqttClient.subscribe("cyberdone/"UUID"/temperatureValue");
   mqttClient.subscribe("cyberdone/"UUID"/ecValue");
   mqttClient.subscribe("cyberdone/"UUID"/tdsValue");
+
+  mqttClient.subscribe("cyberdone/"UUID"/phUpStart");
+  mqttClient.subscribe("cyberdone/"UUID"/phUpStop");
+  mqttClient.subscribe("cyberdone/"UUID"/phDownStart");
+  mqttClient.subscribe("cyberdone/"UUID"/phDownStop");
+  mqttClient.subscribe("cyberdone/"UUID"/fertilizerStart");
+  mqttClient.subscribe("cyberdone/"UUID"/fertilizerStop");
 
   mqttClient.subscribe("cyberdone/"UUID"/sendDataToServerEvery");
   mqttClient.subscribe("cyberdone/"UUID"/checkSensorEvery");
@@ -269,6 +286,27 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (strcmp(topic, "cyberdone/"UUID"/readAll") == 0) {
     readAllDataFromMemoryToRAM();
   }
+
+  if (strcmp(topic, "cyberdone/"UUID"/phUpStart") == 0) {
+    startDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B, (uint8_t) int32_t_Value);
+  }
+  if (strcmp(topic, "cyberdone/"UUID"/phUpStop") == 0) {
+    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/phDownStart") == 0) {
+    startDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B, (uint8_t) int32_t_Value);
+  }
+  if (strcmp(topic, "cyberdone/"UUID"/phDownStop") == 0) {
+    stopDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B);
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/fertilizerStart") == 0) {
+    startDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B, (uint8_t) int32_t_Value);
+  }
+  if (strcmp(topic, "cyberdone/"UUID"/fertilizerStop") == 0) {
+    stopDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B);
+  }
 }
 
 
@@ -286,7 +324,7 @@ void reconnect() {
 }
 
 void setCurrentDateTime() {
-  now = rtc.now();
+  DateTime now = rtc.now();
   cdd.dateSecond = now.second();
   cdd.dateMinute = now.minute();
   cdd.dateHour = now.hour();
@@ -311,7 +349,87 @@ void setupClock() {
   rtc.begin(DateTime(cdd.dateYear, cdd.dateMonth, cdd.dateDay, cdd.dateHour, cdd.dateMinute, cdd.dateSecond));
 }
 
+uint64_t doseTimeMs(uint32_t doseMl) {
+  return (uint64_t) (doseMl / cdd.mlPerSecond * 1000);
+}
+
+uint64_t lastRecheckDoseCompensation = 0;
+uint64_t lastPhUpDosingEndTime = 0;
+uint64_t lastDownUpDosingEndTime = 0;
+uint64_t lastFertilizerDosingEndTime = 0;
+void regulatorLoop() {
+  uint64_t currentTime = millis();
+
+  bool runPhUp = phUpPumpRegulator.getResultTimer() > 0;
+  bool runPhDown = phDownPumpRegulator.getResultTimer() > 0;
+  bool runFertilizer = fertilizerPumpRegulator.getResultTimer() > 0;
+
+  if (currentTime - lastRecheckDoseCompensation >= cdd.recheckDoseCompensationAfterMS) {
+    lastRecheckDoseCompensation = currentTime;
+
+    if (runPhUp && !runPhDown) {
+      startDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B, true);
+    }
+    if (runPhDown && !runPhUp) {
+      startDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B, true);
+    }
+    if (runFertilizer) {
+      startDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B, true);
+    }
+  }
+
+  if (currentTime - lastPhUpDosingEndTime >= lastRecheckDoseCompensation + doseTimeMs(cdd.phUpDoseML)) {
+    lastPhUpDosingEndTime = currentTime;
+    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
+  }
+  if (currentTime - lastDownUpDosingEndTime >= lastRecheckDoseCompensation + doseTimeMs(cdd.phDownDoseML)) {
+    lastPhUpDosingEndTime = currentTime;
+    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
+  }
+  if (currentTime - lastFertilizerDosingEndTime >= lastRecheckDoseCompensation + doseTimeMs(cdd.fertilizerDoseML)) {
+    lastPhUpDosingEndTime = currentTime;
+    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
+  }
+}
+
 void setupDosators() {
+  pinMode(PH_UP_DOSATOR_PORT_A, OUTPUT);
+  pinMode(PH_UP_DOSATOR_PORT_B, OUTPUT);
+  pinMode(PH_DOWN_DOSATOR_PORT_A, OUTPUT);
+  pinMode(PH_DOWN_DOSATOR_PORT_B, OUTPUT);
+  pinMode(FERTILIZER_DOSATOR_PORT_A, OUTPUT);
+  pinMode(FERTILIZER_DOSATOR_PORT_B, OUTPUT);
+
+  phUpPumpRegulator = CDPidRegulator();
+  phUpPumpRegulator.setDirection(INCREASING);
+  phDownPumpRegulator = CDPidRegulator();
+  phDownPumpRegulator.setDirection(DECREASING);
+  fertilizerPumpRegulator = CDPidRegulator();
+  fertilizerPumpRegulator.setDirection(INCREASING);
+
+  phUpPumpRegulator.setMode(ON_ERROR);
+  phUpPumpRegulator.setPwmLimits(0, 1);
+  phUpPumpRegulator.setMaintainValue(cdd.phValue);
+  phUpPumpRegulator.setKp(cdd.phUpPumpRegulatorKp);
+  phUpPumpRegulator.setKi(cdd.phUpPumpRegulatorKi);
+  phUpPumpRegulator.setKd(cdd.phUpPumpRegulatorKd);
+  phUpPumpRegulator.setDt(cdd.phUpPumpRegulatorDt);
+
+  phDownPumpRegulator.setMode(ON_ERROR);
+  phDownPumpRegulator.setPwmLimits(0, 1);
+  phDownPumpRegulator.setMaintainValue(cdd.phValue);
+  phDownPumpRegulator.setKp(cdd.phDownPumpRegulatorKp);
+  phDownPumpRegulator.setKi(cdd.phDownPumpRegulatorKi);
+  phDownPumpRegulator.setKd(cdd.phDownPumpRegulatorKd);
+  phDownPumpRegulator.setDt(cdd.phDownPumpRegulatorDt);
+
+  fertilizerPumpRegulator.setMode(ON_ERROR);
+  fertilizerPumpRegulator.setPwmLimits(0, 1);
+  fertilizerPumpRegulator.setMaintainValue(cdd.tdsValue);
+  fertilizerPumpRegulator.setKp(cdd.fertilizerPumpRegulatorKp);
+  fertilizerPumpRegulator.setKi(cdd.fertilizerPumpRegulatorKi);
+  fertilizerPumpRegulator.setKd(cdd.fertilizerPumpRegulatorKd);
+  fertilizerPumpRegulator.setDt(cdd.fertilizerPumpRegulatorDt);
 }
 
 void setupSensors() {
@@ -329,7 +447,4 @@ void sensorsLoop() {
 
   cdd.phValue = phSensor.singleReading().getpH();
   phSensor.temperatureCompensation(cdd.temperatureValue);
-}
-
-void regulatorLoop() {
 }
