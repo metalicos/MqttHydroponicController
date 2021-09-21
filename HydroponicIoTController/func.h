@@ -506,17 +506,17 @@ uint64_t lastRecheckDosators = 0;
 void dosatorsLoop() {
   if (millis() - lastRecheckDosators >= cdd.recheckDosatorsAfterMs) {
     lastRecheckDosators = millis();
-    if (cdd.setupPhValue > (cdd.setupPhValue - (cdd.regulateErrorPhUp / 2))) {
+    if (cdd.phValue < (cdd.setupPhValue - (cdd.regulateErrorPhUp / 2))) {
       startDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B, true);
       delay(doseTimeMs(cdd.phUpDoseMl));
       stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
     }
-    if (cdd.setupPhValue < (cdd.setupPhValue + (cdd.regulateErrorPhDown / 2))) {
+    if (cdd.phValue > (cdd.setupPhValue + (cdd.regulateErrorPhDown / 2))) {
       startDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B, true);
       delay(doseTimeMs(cdd.phDownDoseMl));
       stopDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B);
     }
-    if (cdd.setupTdsValue > (cdd.setupTdsValue - (cdd.regulateErrorFertilizer / 2))) {
+    if (cdd.tdsValue < (cdd.setupTdsValue - (cdd.regulateErrorFertilizer / 2))) {
       startDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B, true);
       delay(doseTimeMs(cdd.fertilizerDoseMl));
       stopDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B);
