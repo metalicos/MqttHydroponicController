@@ -10,6 +10,10 @@ void stopDosing(int pinA, int pinB) {
   digitalWrite(pinB, 0);
 }
 
+uint64_t doseTimeMs(double doseMl) {
+  return lround(doseMl / cdd.mlPerMilisecond);
+}
+
 void saveAllDataToMemory() {
   memory.putUChar("daSec", cdd.dateSecond);
   memory.putUChar("daMin", cdd.dateMinute);
@@ -22,11 +26,24 @@ void saveAllDataToMemory() {
   memory.putFloat("ecVal", cdd.ecValue);
   memory.putFloat("tdVal", cdd.tdsValue);
   memory.putUInt("seDatToSer", cdd.sendDataToServerEvery);
-  memory.putUShort("chSenEve", cdd.checkSensorEvery);
-  memory.putBool("tuOff", cdd.turnOff);
-  memory.putUShort("reCou", cdd.restartCounter);
   memory.putString("wiSSID", String(cdd.wifiSSID));
   memory.putString("wiPASS", String(cdd.wifiPASS));
+  memory.putDouble("mlPerMil", cdd.mlPerMilisecond);
+  memory.putDouble("reErPhUp", cdd.regulateErrorPhUp);
+  memory.putDouble("reErPhDo", cdd.regulateErrorPhDown);
+  memory.putDouble("reErFer", cdd.regulateErrorFertilizer);
+  memory.putDouble("phUpDoMl", cdd.phUpDoseMl);
+  memory.putDouble("phDoDoMl", cdd.phDownDoseMl);
+  memory.putDouble("feDoMl", cdd.fertilizerDoseMl);
+  memory.putULong("reDoAfMs", cdd.recheckDosatorsAfterMs);
+  memory.putDouble("sePhVal", cdd.setupPhValue);
+  memory.putUInt("seTdsVal", cdd.setupTdsValue);
+  memory.putDouble("seTempVal", cdd.setupTemperatureValue);
+
+  memory.putBool("devEn", cdd.deviceEnable);
+  memory.putBool("dosEn", cdd.dosatorsEnable);
+  memory.putBool("senEn", cdd.sensorsEnable);
+  memory.putULong("reCount", cdd.restartCounter);
 }
 
 void readAllDataFromMemoryToRAM() {
@@ -36,16 +53,30 @@ void readAllDataFromMemoryToRAM() {
   cdd.dateDay = memory.getUChar("daDay", 0);
   cdd.dateMonth = memory.getUChar("daMon", 0);
   cdd.dateYear = memory.getUShort("daYea", 0);
-  cdd.phValue = memory.getFloat("phVal", 0.0f);
-  cdd.temperatureValue = memory.getFloat("teVal", 0.0f);
-  cdd.ecValue = memory.getFloat("ecVal", 0.0f);
-  cdd.tdsValue = memory.getFloat("tdVal", 0.0f);
+  cdd.phValue = memory.getDouble("phVal", 0.0f);
+  cdd.temperatureValue = memory.getDouble("teVal", 0.0f);
+  cdd.ecValue = memory.getDouble("ecVal", 0.0f);
+  cdd.tdsValue = memory.getDouble("tdVal", 0.0f);
   cdd.sendDataToServerEvery = memory.getUInt("seDatToSer", 0);
-  cdd.checkSensorEvery = memory.getUShort("chSenEve", 0);
-  cdd.turnOff = memory.getBool("tuOff", true);
-  cdd.restartCounter = memory.getUShort("reCou", 0);
+  cdd.restartCounter = memory.getULong("reCou", 0);
   memory.getString("wifiSSID", cdd.wifiSSID, 20);
   memory.getString("wifiPASS", cdd.wifiPASS, 20);
+
+  cdd.mlPerMilisecond = memory.getDouble("mlPerMil", 0.00106666666);
+  cdd.regulateErrorPhUp = memory.getDouble("reErPhUp", 0.5);
+  cdd.regulateErrorPhDown = memory.getDouble("reErPhDo", 0.5);
+  cdd.regulateErrorFertilizer = memory.getDouble("reErFer", 20);
+  cdd.phUpDoseMl = memory.getDouble("phUpDoMl", 2.0);
+  cdd.phDownDoseMl = memory.getDouble("phDoDoMl", 2.0);
+  cdd.fertilizerDoseMl = memory.getDouble("feDoMl", 2.0);
+  cdd.recheckDosatorsAfterMs = memory.getULong("reDoAfMs", 10000);
+  cdd.setupPhValue = memory.getDouble("sePhVal", 6.2);
+  cdd.setupTdsValue = memory.getUInt("seTdsVal", 600);
+  cdd.setupTemperatureValue = memory.getDouble("seTempVal", 22.0);
+  cdd.deviceEnable = memory.getBool("devEn", true);
+  cdd.dosatorsEnable = memory.getBool("dosEn", true);
+  cdd.sensorsEnable = memory.getBool("senEn", true);
+  cdd.restartCounter = memory.getULong("reCount", 0);
 }
 
 struct PHCalibrationValue getPhStruct() {
@@ -84,8 +115,8 @@ void setupMemory() {
 
   readAllDataFromMemoryToRAM();
 
-  cdd.restartCounter++;
-  memory.putULong("reCou", cdd.restartCounter);
+  cdd.restartCounter = cdd.restartCounter + 1;
+  memory.putULong("reCount", cdd.restartCounter);
 }
 
 void subscribeEndpoints() {
@@ -108,9 +139,24 @@ void subscribeEndpoints() {
   mqttClient.subscribe("cyberdone/"UUID"/fertilizerStart");
   mqttClient.subscribe("cyberdone/"UUID"/fertilizerStop");
 
+  mqttClient.subscribe("cyberdone/"UUID"/mlPerMilisecond");
+  mqttClient.subscribe("cyberdone/"UUID"/regulateErrorPhUp");
+  mqttClient.subscribe("cyberdone/"UUID"/regulateErrorPhDown");
+  mqttClient.subscribe("cyberdone/"UUID"/regulateErrorFertilizer");
+  mqttClient.subscribe("cyberdone/"UUID"/phUpDoseMl");
+  mqttClient.subscribe("cyberdone/"UUID"/phDownDoseMl");
+  mqttClient.subscribe("cyberdone/"UUID"/fertilizerDoseMl");
+  mqttClient.subscribe("cyberdone/"UUID"/recheckDosatorsAfterMs");
+  mqttClient.subscribe("cyberdone/"UUID"/setupPhValue");
+  mqttClient.subscribe("cyberdone/"UUID"/setupTdsValue");
+  mqttClient.subscribe("cyberdone/"UUID"/setupTemperatureValue");
+
   mqttClient.subscribe("cyberdone/"UUID"/sendDataToServerEvery");
   mqttClient.subscribe("cyberdone/"UUID"/checkSensorEvery");
-  mqttClient.subscribe("cyberdone/"UUID"/turnOff");
+
+  mqttClient.subscribe("cyberdone/"UUID"/deviceEnable");
+  mqttClient.subscribe("cyberdone/"UUID"/dosatorsEnable");
+  mqttClient.subscribe("cyberdone/"UUID"/sensorsEnable");
   mqttClient.subscribe("cyberdone/"UUID"/restartCounter");
 
   mqttClient.subscribe("cyberdone/"UUID"/calibratePhLow");
@@ -129,7 +175,37 @@ void subscribeEndpoints() {
 }
 
 String createJSON() {
-  return "{\"dateSecond\":\"" + String(cdd.dateSecond) + "\",\"dateMinute\":\"" + String(cdd.dateMinute) + "\",\"dateHour\":\"" + String(cdd.dateHour) + "\",\"dateDay\":\"" + String(cdd.dateDay) + "\",\"dateMonth\":\"" + String(cdd.dateMonth) + "\",\"dateYear\":\"" + String(cdd.dateYear) + "\",\"phValue\":\"" + String(cdd.phValue) + "\",\"temperatureValue\":\"" + String(cdd.temperatureValue) + "\",\"ecValue\":\"" + String(cdd.ecValue) + "\",\"tdsValue\":\"" + String(cdd.tdsValue) + "\",\"sendDataToServerEvery\":\"" + String((uint32_t)cdd.sendDataToServerEvery) + "\",\"checkSensorEvery\":\"" + String((uint32_t)cdd.checkSensorEvery) + "\",\"turnOff\":\"" + String(cdd.turnOff) + "\",\"restartCounter\":\"" + String((uint32_t)cdd.restartCounter) + "\"}";
+  String str = "{\n";
+  str += "\"phValue\":\"" + String(cdd.phValue, 2) + "\",\n";
+  str += "\"temperatureValue\":\"" + String(cdd.temperatureValue, 2) + "\",\n" ;
+  str += "\"ecValue\":\"" + String(cdd.ecValue, 2) + "\",\n";
+  str += "\"tdsValue\":\"" + String(cdd.tdsValue) + "\",\n" ;
+  str += "\"mlPerMilisecond\":\"" + String(cdd.mlPerMilisecond, 11) + "\",\n" ;
+  str += "\"regulateErrorPhUp\":\"" + String(cdd.regulateErrorPhUp, 2) + "\",\n" ;
+  str += "\"regulateErrorPhDown\":\"" + String(cdd.regulateErrorPhDown, 2) + "\",\n" ;
+  str += "\"phUpDoseMl\":\"" + String(cdd.phUpDoseMl, 1) + "\",\n" ;
+  str += "\"phDownDoseMl\":\"" + String(cdd.phDownDoseMl, 1) + "\",\n" ;
+  str += "\"fertilizerDoseMl\":\"" + String(cdd.fertilizerDoseMl, 1) + "\",\n" ;
+  str += "\"recheckDosatorsAfterMs\":\"" + String((uint32_t)cdd.recheckDosatorsAfterMs) + "\",\n" ;
+  str += "\"setupPhValue\":\"" + String(cdd.setupPhValue, 2) + "\",\n" ;
+  str += "\"setupTdsValue\":\"" + String(cdd.setupTdsValue, 2) + "\",\n" ;
+  str += "\"setupTemperatureValue\":\"" + String(cdd.setupTemperatureValue, 2) + "\",\n" ;
+  str += "\"sendDataToServerEvery\":\"" + String((uint32_t)cdd.sendDataToServerEvery) + "\",\n" ;
+  str += "\"deviceEnable\":\"" + String(cdd.deviceEnable) + "\",\n" ;
+  str += "\"dosatorsEnable\":\"" + String(cdd.dosatorsEnable) + "\",\n" ;
+  str += "\"sensorsEnable\":\"" + String(cdd.sensorsEnable) + "\",\n" ;
+  str += "\"wifiSSID\":\"" + String(cdd.wifiSSID) + "\",\n" ;
+  str += "\"wifiPASS\":\"" + String(cdd.wifiPASS) + "\",\n" ;
+  str += "\"dateSecond\":\"" + String(cdd.dateSecond) + "\",\n" ;
+  str += "\"dateMinute\":\"" + String(cdd.dateMinute) + "\",\n" ;
+  str += "\"dateHour\":\"" + String(cdd.dateHour) + "\",\n" ;
+  str += "\"dateDay\":\"" + String(cdd.dateDay) + "\",\n" ;
+  str += "\"dateMonth\":\"" + String(cdd.dateMonth) + "\",\n" ;
+  str += "\"dateYear\":\"" + String(cdd.dateYear) + "\",\n" ;
+  str += "\"restartCounter\":\"" + String((uint32_t)cdd.restartCounter) + "\",\n" ;
+  str += "\"UUID\":\""UUID"\"\n" ;
+  str += "}";
+  return str;
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -220,18 +296,28 @@ void callback(char* topic, byte* payload, unsigned int length) {
     return;
   }
 
-  if (strcmp(topic, "cyberdone/"UUID"/checkSensorEvery") == 0) {
-    cdd.checkSensorEvery = int32_t_Value;
-    memory.putUShort("chSenEve", cdd.checkSensorEvery);
+  if (strcmp(topic, "cyberdone/"UUID"/deviceEnable") == 0) {
+    cdd.deviceEnable = (bool) int32_t_Value;
+    memory.putBool("devEn", cdd.deviceEnable);
     return;
   }
 
-  if (strcmp(topic, "cyberdone/"UUID"/turnOff") == 0) {
-    cdd.turnOff = (bool) int32_t_Value; return;
+  if (strcmp(topic, "cyberdone/"UUID"/dosatorsEnable") == 0) {
+    cdd.dosatorsEnable = (bool) int32_t_Value;
+    memory.putBool("dosEn", cdd.dosatorsEnable);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/sensorsEnable") == 0) {
+    cdd.sensorsEnable = (bool) int32_t_Value;
+    memory.putBool("senEn", cdd.sensorsEnable);
+    return;
   }
 
   if (strcmp(topic, "cyberdone/"UUID"/restartCounter") == 0) {
-    cdd.restartCounter = (uint16_t) int32_t_Value; return;
+    cdd.restartCounter = uint64_t_Value;
+    memory.putULong("reCount", cdd.restartCounter);
+    return;
   }
 
   if (strcmp(topic, "cyberdone/"UUID"/wifiSSID") == 0) {
@@ -243,6 +329,72 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (strcmp(topic, "cyberdone/"UUID"/wifiPASS") == 0) {
     sscanf(data, " %s ", cdd.wifiPASS);
     memory.putString("wiPASS", String(cdd.wifiPASS));
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/mlPerMilisecond") == 0) {
+    cdd.mlPerMilisecond = doubleValue;
+    memory.putDouble("mlPerMil", cdd.mlPerMilisecond);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/regulateErrorPhUp") == 0) {
+    cdd.regulateErrorPhUp = doubleValue;
+    memory.putDouble("reErPhUp", cdd.regulateErrorPhUp);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/regulateErrorPhDown") == 0) {
+    cdd.regulateErrorPhDown = doubleValue;
+    memory.putDouble("reErPhDo", cdd.regulateErrorPhDown);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/regulateErrorFertilizer") == 0) {
+    cdd.regulateErrorFertilizer = doubleValue;
+    memory.putDouble("reErFer", cdd.regulateErrorFertilizer);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/phUpDoseMl") == 0) {
+    cdd.phUpDoseMl = doubleValue;
+    memory.putDouble("phUpDoMl", cdd.phUpDoseMl);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/phDownDoseMl") == 0) {
+    cdd.phDownDoseMl = doubleValue;
+    memory.putDouble("phDoDoMl", cdd.phDownDoseMl);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/fertilizerDoseMl") == 0) {
+    cdd.fertilizerDoseMl = doubleValue;
+    memory.putDouble("feDoMl", cdd.fertilizerDoseMl);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/recheckDosatorsAfterMs") == 0) {
+    cdd.recheckDosatorsAfterMs = uint64_t_Value;
+    memory.putULong("reDoAfMs", cdd.recheckDosatorsAfterMs);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/setupPhValue") == 0) {
+    cdd.setupPhValue = doubleValue;
+    memory.putDouble("sePhVal", cdd.setupPhValue);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/setupTdsValue") == 0) {
+    cdd.setupTdsValue = uint32_t_Value;
+    memory.putUInt("seTdsVal", cdd.setupTdsValue);
+    return;
+  }
+
+  if (strcmp(topic, "cyberdone/"UUID"/setupTemperatureValue") == 0) {
+    cdd.setupTemperatureValue = doubleValue;
+    memory.putDouble("seTempVal", cdd.setupTemperatureValue);
     return;
   }
 
@@ -349,46 +501,26 @@ void setupClock() {
   rtc.begin(DateTime(cdd.dateYear, cdd.dateMonth, cdd.dateDay, cdd.dateHour, cdd.dateMinute, cdd.dateSecond));
 }
 
-uint64_t doseTimeMs(uint32_t doseMl) {
-  return (uint64_t) (doseMl / cdd.mlPerSecond * 1000);
-}
+uint64_t lastRecheckDosators = 0;
 
-uint64_t lastRecheckDoseCompensation = 0;
-uint64_t lastPhUpDosingEndTime = 0;
-uint64_t lastDownUpDosingEndTime = 0;
-uint64_t lastFertilizerDosingEndTime = 0;
-void regulatorLoop() {
-  uint64_t currentTime = millis();
-
-  bool runPhUp = phUpPumpRegulator.getResultTimer() > 0;
-  bool runPhDown = phDownPumpRegulator.getResultTimer() > 0;
-  bool runFertilizer = fertilizerPumpRegulator.getResultTimer() > 0;
-
-  if (currentTime - lastRecheckDoseCompensation >= cdd.recheckDoseCompensationAfterMS) {
-    lastRecheckDoseCompensation = currentTime;
-
-    if (runPhUp && !runPhDown) {
+void dosatorsLoop() {
+  if (millis() - lastRecheckDosators >= cdd.recheckDosatorsAfterMs) {
+    lastRecheckDosators = millis();
+    if (cdd.setupPhValue > (cdd.setupPhValue - (cdd.regulateErrorPhUp / 2))) {
       startDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B, true);
+      delay(doseTimeMs(cdd.phUpDoseMl));
+      stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
     }
-    if (runPhDown && !runPhUp) {
+    if (cdd.setupPhValue < (cdd.setupPhValue + (cdd.regulateErrorPhDown / 2))) {
       startDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B, true);
+      delay(doseTimeMs(cdd.phDownDoseMl));
+      stopDosing(PH_DOWN_DOSATOR_PORT_A, PH_DOWN_DOSATOR_PORT_B);
     }
-    if (runFertilizer) {
+    if (cdd.setupTdsValue > (cdd.setupTdsValue - (cdd.regulateErrorFertilizer / 2))) {
       startDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B, true);
+      delay(doseTimeMs(cdd.fertilizerDoseMl));
+      stopDosing(FERTILIZER_DOSATOR_PORT_A, FERTILIZER_DOSATOR_PORT_B);
     }
-  }
-
-  if (currentTime - lastPhUpDosingEndTime >= lastRecheckDoseCompensation + doseTimeMs(cdd.phUpDoseML)) {
-    lastPhUpDosingEndTime = currentTime;
-    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
-  }
-  if (currentTime - lastDownUpDosingEndTime >= lastRecheckDoseCompensation + doseTimeMs(cdd.phDownDoseML)) {
-    lastPhUpDosingEndTime = currentTime;
-    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
-  }
-  if (currentTime - lastFertilizerDosingEndTime >= lastRecheckDoseCompensation + doseTimeMs(cdd.fertilizerDoseML)) {
-    lastPhUpDosingEndTime = currentTime;
-    stopDosing(PH_UP_DOSATOR_PORT_A, PH_UP_DOSATOR_PORT_B);
   }
 }
 
@@ -399,37 +531,6 @@ void setupDosators() {
   pinMode(PH_DOWN_DOSATOR_PORT_B, OUTPUT);
   pinMode(FERTILIZER_DOSATOR_PORT_A, OUTPUT);
   pinMode(FERTILIZER_DOSATOR_PORT_B, OUTPUT);
-
-  phUpPumpRegulator = CDPidRegulator();
-  phUpPumpRegulator.setDirection(INCREASING);
-  phDownPumpRegulator = CDPidRegulator();
-  phDownPumpRegulator.setDirection(DECREASING);
-  fertilizerPumpRegulator = CDPidRegulator();
-  fertilizerPumpRegulator.setDirection(INCREASING);
-
-  phUpPumpRegulator.setMode(ON_ERROR);
-  phUpPumpRegulator.setPwmLimits(0, 1);
-  phUpPumpRegulator.setMaintainValue(cdd.phValue);
-  phUpPumpRegulator.setKp(cdd.phUpPumpRegulatorKp);
-  phUpPumpRegulator.setKi(cdd.phUpPumpRegulatorKi);
-  phUpPumpRegulator.setKd(cdd.phUpPumpRegulatorKd);
-  phUpPumpRegulator.setDt(cdd.phUpPumpRegulatorDt);
-
-  phDownPumpRegulator.setMode(ON_ERROR);
-  phDownPumpRegulator.setPwmLimits(0, 1);
-  phDownPumpRegulator.setMaintainValue(cdd.phValue);
-  phDownPumpRegulator.setKp(cdd.phDownPumpRegulatorKp);
-  phDownPumpRegulator.setKi(cdd.phDownPumpRegulatorKi);
-  phDownPumpRegulator.setKd(cdd.phDownPumpRegulatorKd);
-  phDownPumpRegulator.setDt(cdd.phDownPumpRegulatorDt);
-
-  fertilizerPumpRegulator.setMode(ON_ERROR);
-  fertilizerPumpRegulator.setPwmLimits(0, 1);
-  fertilizerPumpRegulator.setMaintainValue(cdd.tdsValue);
-  fertilizerPumpRegulator.setKp(cdd.fertilizerPumpRegulatorKp);
-  fertilizerPumpRegulator.setKi(cdd.fertilizerPumpRegulatorKi);
-  fertilizerPumpRegulator.setKd(cdd.fertilizerPumpRegulatorKd);
-  fertilizerPumpRegulator.setDt(cdd.fertilizerPumpRegulatorDt);
 }
 
 void setupSensors() {

@@ -29,8 +29,8 @@ PubSubClient mqttClient(espClient);
 DeviceData cdd;
 RTC_Millis rtc;
 Preferences memory;
+TaskHandle_t core1, core2;
 
 DS18B20 temperatureSensor(TEMPERATURE_SENSOR_PORT);
 CyberDonePhSensor phSensor(PH_SENSOR_PORT);
 CyberDoneTdsSensor tdsSensor(TDS_SENSOR_PORT, ADC_REFERENCE_VOLTAGE, ADC_MAX);
-CDPidRegulator phUpPumpRegulator, phDownPumpRegulator, fertilizerPumpRegulator;
