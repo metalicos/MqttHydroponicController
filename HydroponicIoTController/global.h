@@ -6,7 +6,6 @@
 #include "DS18B20.h"
 #include "CyberDonePhSensor.h"
 #include "CyberDoneTdsSensor.h"
-#include "CDPidRegulator.h"
 
 //#define MQTT_SERVER "b85b0aa3fd23.sn.mynetname.net"
 #define MQTT_SERVER "192.168.1.100"

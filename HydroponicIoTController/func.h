@@ -188,7 +188,7 @@ String createJSON() {
   str += "\"fertilizerDoseMl\":\"" + String(cdd.fertilizerDoseMl, 1) + "\",\n" ;
   str += "\"recheckDosatorsAfterMs\":\"" + String((uint32_t)cdd.recheckDosatorsAfterMs) + "\",\n" ;
   str += "\"setupPhValue\":\"" + String(cdd.setupPhValue, 2) + "\",\n" ;
-  str += "\"setupTdsValue\":\"" + String(cdd.setupTdsValue, 2) + "\",\n" ;
+  str += "\"setupTdsValue\":\"" + String(cdd.setupTdsValue) + "\",\n" ;
   str += "\"setupTemperatureValue\":\"" + String(cdd.setupTemperatureValue, 2) + "\",\n" ;
   str += "\"sendDataToServerEvery\":\"" + String((uint32_t)cdd.sendDataToServerEvery) + "\",\n" ;
   str += "\"deviceEnable\":\"" + String(cdd.deviceEnable) + "\",\n" ;

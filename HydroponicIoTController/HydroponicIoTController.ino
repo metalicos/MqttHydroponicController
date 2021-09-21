@@ -8,13 +8,11 @@ void firstCoreLoop( void * parameter ) {
 
 void secondCoreLoop( void * parameter ) {
   for (;;) {
-    if (cdd.deviceEnable) {
-      if (cdd.sensorsEnable) {
-        sensorsLoop();
-      }
-      if (cdd.dosatorsEnable) {
-        dosatorsLoop();
-      }
+    if (cdd.sensorsEnable) {
+      sensorsLoop();
+    }
+    if (cdd.dosatorsEnable) {
+      dosatorsLoop();
     }
   }
 }
