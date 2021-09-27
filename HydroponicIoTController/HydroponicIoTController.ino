@@ -18,17 +18,19 @@ void secondCoreLoop( void * parameter ) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  //Serial.begin(115200);
   setupMemory();
-  setupSensors();
-  setupDosators();
-  setup_wifi();
+  setupTime();
+  setupWifi();
   mqttClient.setServer(MQTT_SERVER, 1883);
   mqttClient.setCallback(callback);
-  rtc.begin(DateTime(F(__DATE__), F(__TIME__)));
+  setupSensors();
+  setupDosators();
+  //rtc.begin(DateTime(F(__DATE__), F(__TIME__)));
   xTaskCreatePinnedToCore(firstCoreLoop, "firstCoreLoop", 5000, NULL, 2, &core1, 0);
   delay(500);
   xTaskCreatePinnedToCore(secondCoreLoop, "secondCoreLoop", 5000, NULL, 2, &core2, 1);
+  
 }
 
 void loop() {

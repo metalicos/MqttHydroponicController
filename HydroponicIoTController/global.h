@@ -22,6 +22,7 @@
 #define FERTILIZER_DOSATOR_PORT_B 17
 
 uint64_t lastSendToServer = 0;
+uint64_t lastRecheckDosators = 0;
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);

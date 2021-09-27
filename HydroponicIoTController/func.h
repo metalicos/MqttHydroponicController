@@ -15,17 +15,10 @@ uint64_t doseTimeMs(double doseMl) {
 }
 
 void saveAllDataToMemory() {
-  memory.putUChar("daSec", cdd.dateSecond);
-  memory.putUChar("daMin", cdd.dateMinute);
-  memory.putUChar("daHou", cdd.dateHour);
-  memory.putUChar("daDay", cdd.dateDay);
-  memory.putUChar("daMon", cdd.dateMonth);
-  memory.putUShort("daYea", cdd.dateYear);
   memory.putFloat("phVal", cdd.phValue);
   memory.putFloat("teVal", cdd.temperatureValue);
   memory.putFloat("ecVal", cdd.ecValue);
   memory.putFloat("tdVal", cdd.tdsValue);
-  memory.putUInt("seDatToSer", cdd.sendDataToServerEvery);
   memory.putString("wiSSID", String(cdd.wifiSSID));
   memory.putString("wiPASS", String(cdd.wifiPASS));
   memory.putDouble("mlPerMil", cdd.mlPerMilisecond);
@@ -47,17 +40,10 @@ void saveAllDataToMemory() {
 }
 
 void readAllDataFromMemoryToRAM() {
-  cdd.dateSecond = memory.getUChar("daSec", 0);
-  cdd.dateMinute = memory.getUChar("daMin", 0);
-  cdd.dateHour = memory.getUChar("daHou", 0);
-  cdd.dateDay = memory.getUChar("daDay", 0);
-  cdd.dateMonth = memory.getUChar("daMon", 0);
-  cdd.dateYear = memory.getUShort("daYea", 0);
   cdd.phValue = memory.getDouble("phVal", 0.0f);
   cdd.temperatureValue = memory.getDouble("teVal", 0.0f);
   cdd.ecValue = memory.getDouble("ecVal", 0.0f);
   cdd.tdsValue = memory.getDouble("tdVal", 0.0f);
-  cdd.sendDataToServerEvery = memory.getUInt("seDatToSer", 0);
   cdd.restartCounter = memory.getULong("reCou", 0);
   memory.getString("wifiSSID", cdd.wifiSSID, 20);
   memory.getString("wifiPASS", cdd.wifiPASS, 20);
@@ -107,6 +93,12 @@ void setupMemory() {
   if (memory.getUChar("isFirst", 12) == 233) {
     memory.putUChar("isFirst", 233);
     memory.putDouble("tdskValue", 1.0);
+    memory.putUChar("daSec", 0);
+    memory.putUChar("daMin", 0);
+    memory.putUChar("daHou", 0);
+    memory.putUChar("daDay", 0);
+    memory.putUChar("daMon", 0);
+    memory.putUShort("daYea", 0);
     savePhStruct();
     saveAllDataToMemory();
   }
@@ -120,12 +112,7 @@ void setupMemory() {
 }
 
 void subscribeEndpoints() {
-  mqttClient.subscribe("cyberdone/"UUID"/dateSecond");
-  mqttClient.subscribe("cyberdone/"UUID"/dateMinute");
-  mqttClient.subscribe("cyberdone/"UUID"/dateHour");
-  mqttClient.subscribe("cyberdone/"UUID"/dateDay");
-  mqttClient.subscribe("cyberdone/"UUID"/dateMonth");
-  mqttClient.subscribe("cyberdone/"UUID"/dateYear");
+  mqttClient.subscribe("cyberdone/"UUID"/updateTime");
 
   mqttClient.subscribe("cyberdone/"UUID"/phValue");
   mqttClient.subscribe("cyberdone/"UUID"/temperatureValue");
@@ -174,7 +161,14 @@ void subscribeEndpoints() {
   mqttClient.subscribe("cyberdone/"UUID"/wifiPASS");
 }
 
+String currentTime() {
+  DateTime now = rtc.now();
+  char date[25] = "YYYY-MM-DD hh:mm:ss";
+  return String(now.toString(date));
+}
+
 String createJSON() {
+
   String str = "{\n";
   str += "\"phValue\":\"" + String(cdd.phValue, 2) + "\",\n";
   str += "\"temperatureValue\":\"" + String(cdd.temperatureValue, 2) + "\",\n" ;
@@ -183,6 +177,7 @@ String createJSON() {
   str += "\"mlPerMilisecond\":\"" + String(cdd.mlPerMilisecond, 11) + "\",\n" ;
   str += "\"regulateErrorPhUp\":\"" + String(cdd.regulateErrorPhUp, 2) + "\",\n" ;
   str += "\"regulateErrorPhDown\":\"" + String(cdd.regulateErrorPhDown, 2) + "\",\n" ;
+  str += "\"regulateErrorFertilizer\":\"" + String(cdd.regulateErrorFertilizer, 2) + "\",\n" ;
   str += "\"phUpDoseMl\":\"" + String(cdd.phUpDoseMl, 1) + "\",\n" ;
   str += "\"phDownDoseMl\":\"" + String(cdd.phDownDoseMl, 1) + "\",\n" ;
   str += "\"fertilizerDoseMl\":\"" + String(cdd.fertilizerDoseMl, 1) + "\",\n" ;
@@ -190,18 +185,12 @@ String createJSON() {
   str += "\"setupPhValue\":\"" + String(cdd.setupPhValue, 2) + "\",\n" ;
   str += "\"setupTdsValue\":\"" + String(cdd.setupTdsValue) + "\",\n" ;
   str += "\"setupTemperatureValue\":\"" + String(cdd.setupTemperatureValue, 2) + "\",\n" ;
-  str += "\"sendDataToServerEvery\":\"" + String((uint32_t)cdd.sendDataToServerEvery) + "\",\n" ;
   str += "\"deviceEnable\":\"" + String(cdd.deviceEnable) + "\",\n" ;
   str += "\"dosatorsEnable\":\"" + String(cdd.dosatorsEnable) + "\",\n" ;
   str += "\"sensorsEnable\":\"" + String(cdd.sensorsEnable) + "\",\n" ;
   str += "\"wifiSSID\":\"" + String(cdd.wifiSSID) + "\",\n" ;
   str += "\"wifiPASS\":\"" + String(cdd.wifiPASS) + "\",\n" ;
-  str += "\"dateSecond\":\"" + String(cdd.dateSecond) + "\",\n" ;
-  str += "\"dateMinute\":\"" + String(cdd.dateMinute) + "\",\n" ;
-  str += "\"dateHour\":\"" + String(cdd.dateHour) + "\",\n" ;
-  str += "\"dateDay\":\"" + String(cdd.dateDay) + "\",\n" ;
-  str += "\"dateMonth\":\"" + String(cdd.dateMonth) + "\",\n" ;
-  str += "\"dateYear\":\"" + String(cdd.dateYear) + "\",\n" ;
+  str += "\"microcontrollerTime\":\"" + currentTime() + "\",\n" ;
   str += "\"restartCounter\":\"" + String((uint32_t)cdd.restartCounter) + "\",\n" ;
   str += "\"UUID\":\""UUID"\"\n" ;
   str += "}";
@@ -229,40 +218,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
   double doubleValue = 0.0;
   sscanf(data, "#%Lf#", &doubleValue);
 
-
-  if (strcmp(topic, "cyberdone/"UUID"/dateSecond") == 0) {
-    cdd.dateSecond = (uint8_t) int32_t_Value;
-    memory.putUChar("daSec", cdd.dateSecond);
-    return;
-  }
-
-  if (strcmp(topic, "cyberdone/"UUID"/dateMinute") == 0) {
-    cdd.dateMinute = (uint8_t) int32_t_Value;
-    memory.putUChar("daMin", cdd.dateMinute);
-    return;
-  }
-
-  if (strcmp(topic, "cyberdone/"UUID"/dateHour") == 0) {
-    cdd.dateHour = (uint8_t) int32_t_Value;
-    memory.putUChar("daHou", cdd.dateHour);
-    return;
-  }
-
-  if (strcmp(topic, "cyberdone/"UUID"/dateDay") == 0) {
-    cdd.dateDay = (uint8_t) int32_t_Value;
-    memory.putUChar("daDay", cdd.dateDay);
-    return;
-  }
-
-  if (strcmp(topic, "cyberdone/"UUID"/dateMonth") == 0) {
-    cdd.dateMonth = (uint8_t) int32_t_Value;
-    memory.putUChar("daMon", cdd.dateMonth);
-    return;
-  }
-
-  if (strcmp(topic, "cyberdone/"UUID"/dateYear") == 0) {
-    cdd.dateYear = (uint16_t) int32_t_Value;
-    memory.putUShort("daYea", cdd.dateYear);
+  if (strcmp(topic, "cyberdone/"UUID"/updateTime") == 0) {
+    int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+    sscanf(data, "#%d#%d#%d#%d#%d#%d#", &year, &month, &day, &hour, &minute, &second);
+    rtc.adjust(DateTime(year, month, day, hour, minute, second));
+    memory.putUChar("daSec", second);
+    memory.putUChar("daMin", minute);
+    memory.putUChar("daHou", hour);
+    memory.putUChar("daDay", day);
+    memory.putUChar("daMon", month);
+    memory.putUShort("daYea", year);
     return;
   }
 
@@ -287,12 +252,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (strcmp(topic, "cyberdone/"UUID"/tdsValue") == 0) {
     cdd.tdsValue = (float) floatValue;
     memory.putFloat("tdVal", cdd.tdsValue);
-    return;
-  }
-
-  if (strcmp(topic, "cyberdone/"UUID"/sendDataToServerEvery") == 0) {
-    cdd.sendDataToServerEvery = uint32_t_Value;
-    memory.putUInt("seDatToSer", cdd.sendDataToServerEvery);
     return;
   }
 
@@ -462,7 +421,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 
-void setup_wifi() {
+void setupWifi() {
   delay(10);
   WiFi.mode(WIFI_STA);
   WiFi.begin(cdd.wifiSSID, cdd.wifiPASS);
@@ -475,33 +434,26 @@ void reconnect() {
   }
 }
 
-void setCurrentDateTime() {
-  DateTime now = rtc.now();
-  cdd.dateSecond = now.second();
-  cdd.dateMinute = now.minute();
-  cdd.dateHour = now.hour();
-  cdd.dateDay = now.day();
-  cdd.dateMonth = now.month();
-  cdd.dateYear = now.year();
+String timeJSON() {
+  String str = "{\n";
+  str += "\"microcontrollerTime\":\"" + currentTime() + "\",\n" ;
+  str += "\"UUID\":\""UUID"\"\n" ;
+  str += "}";
+  return str;
 }
 
 void mqttLoop() {
-  if (!mqttClient.connected()) {
-    reconnect();
+  for (int i = 0; i < 50; i++) {
+    if (!mqttClient.connected()) {
+      reconnect();
+    }
+    delay(9);
+    mqttClient.loop();
+    delay(10);
   }
-  mqttClient.loop();
-  if (millis() - lastSendToServer > (uint64_t) cdd.sendDataToServerEvery) {
-    lastSendToServer = millis();
-    mqttClient.publish("hydro-chip", createJSON().c_str());
-    setCurrentDateTime();
-  }
+  mqttClient.publish("hydro-chip", createJSON().c_str());
+  mqttClient.publish("time", timeJSON().c_str());
 }
-
-void setupClock() {
-  rtc.begin(DateTime(cdd.dateYear, cdd.dateMonth, cdd.dateDay, cdd.dateHour, cdd.dateMinute, cdd.dateSecond));
-}
-
-uint64_t lastRecheckDosators = 0;
 
 void dosatorsLoop() {
   if (millis() - lastRecheckDosators >= cdd.recheckDosatorsAfterMs) {
@@ -548,4 +500,15 @@ void sensorsLoop() {
 
   cdd.phValue = phSensor.singleReading().getpH();
   phSensor.temperatureCompensation(cdd.temperatureValue);
+}
+
+void setupTime() {
+  int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+  second = memory.getUChar("daSec", 0);
+  minute = memory.getUChar("daMin", 0);
+  hour = memory.getUChar("daHou", 0);
+  day = memory.getUChar("daDay", 0);
+  month = memory.getUChar("daMon", 0);
+  year = memory.getUShort("daYea", 0);
+  rtc.begin(DateTime(year, month, day, hour, minute, second));
 }
